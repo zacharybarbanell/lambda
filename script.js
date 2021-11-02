@@ -1,6 +1,11 @@
 var canvas = document.getElementById("myCanvas");
 var ctx = canvas.getContext("2d");
 
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+
+
 window.addEventListener("load", _e => {
   window.dispatchEvent(new Event('resize'));
   window.requestAnimationFrame(draw);
