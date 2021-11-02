@@ -1,8 +1,7 @@
 var canvas = document.getElementById("myCanvas");
 var ctx = canvas.getContext("2d");
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+
 
 
 
@@ -18,6 +17,10 @@ var workstring = ""
 var LAMBDA = "λ"
 
 function draw() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+
 	ctx.fillStyle = "rgb(" + (200 + (animcounter % 60 >= 30 ? 30 - (animcounter % 30) : (animcounter % 30))) +
 								"," + (200 + (animcounter % 60 >= 30 ? 30 - (animcounter % 30) : (animcounter % 30))) +
 								"," + (200 + (animcounter % 60 >= 30 ? 30 - (animcounter % 30) : (animcounter % 30))) + ")";
@@ -26,9 +29,10 @@ function draw() {
 
 	ctx.fillStyle = "black";
 	ctx.font = "48px monospace";
-	ctx.fillText(workstring, 10, 48 + 10);
-
-
+  ctx.fillText(workstring, 10, 48 + 10);
+  if (animcounter % 40 <= 19) {
+	   ctx.fillRect(10 + ctx.measureText(workstring).width,10,5,48)
+  }
 
 	window.requestAnimationFrame(draw);
 }
