@@ -1,0 +1,6 @@
+SUCC := fn n => (fn f => fn x => f (n f x));
+ZERO := (fn f => fn x => x);
+TWO := SUCC SUCC ZERO;
+THREE := SUCC TWO;
+POWER := fn n => fn m => m n;
+MAIN := POWER THREE TWO;

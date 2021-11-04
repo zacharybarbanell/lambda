@@ -1,0 +1,11 @@
+SUCC := fn n => (fn f => fn x => f (n f x));
+ZERO := fn f => fn x => x;
+FOUR := SUCC SUCC SUCC SUCC ZERO
+TRUE := fn x => fn y => x;
+FALSE := fn x => fn y => y;
+PAIR := fn x => fn y => fn f => f x y;
+FST := fn p => TRUE;
+SND := fn p => FALSE;
+HELPER := fn x => PAIR (SND x) (SUCC (SND x));
+PRED := fn n => fst (n HELPER (PAIR ZERO ZERO));
+MAIN := PRED FOUR
