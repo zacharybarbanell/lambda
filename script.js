@@ -1,5 +1,7 @@
-var canvas = document.getElementById("myCanvas");
-var ctx = canvas.getContext("2d");
+'use strict'; //this line makes JS stop you from doing dumb things you don't want to do - must be above ALL other statements
+
+let canvas = document.getElementById("myCanvas");
+let ctx = canvas.getContext("2d");
 
 
 
@@ -10,11 +12,13 @@ window.addEventListener("load", _e => {
   window.requestAnimationFrame(draw);
 });
 
-var animcounter = 0
+let animcounter = 0
 
-var workstring = ""
+let workstring = ""
 
-var LAMBDA = "λ"
+let LAMBDA = "λ"
+
+let singlechartokens = [LAMBDA, '.', '(', ')']
 
 function draw() {
   canvas.width = window.innerWidth;
@@ -38,9 +42,9 @@ function draw() {
 }
 
 function keypressed(e){
-	code = e.code
+	let code = e.code
 	if( code in typablecodes ) {
-    if( code == "Backspace"){
+    if( code === "Backspace"){
       workstring = workstring.substring(0,workstring.length-1)
     } else {
       if (e.shiftKey) {
@@ -55,18 +59,103 @@ function keypressed(e){
 document.onkeydown = keypressed;
 
 function parse(str){
-  stream = {}
-  stream.string = str
+  let tokens = []
+  for (let i = 0; i < str.length; i++) {
+    if(str[i] === ' '){
+      //pass
+    }
+    else if(singlechartokens.includes(str[i])){
+      tokens.push(str[i])
+    }
+    else if(alphabet.includes(str[i])){
+      let thisname = ''
+      while(i < str.length && alphabet.includes(str[i])){
+        thisname += str[i]
+        i++;
+      }
+      i--; //because it's incremented in the loop
+      tokens.push(thisname)
+    }
+    else{
+      throw new Error("Unexpected symbol " + str[i] + " while tokenizing")
+    }
+  }
+  tokens.push(')') //to make it so that the logic can always assume there's another character
+  let stream = {}
+  stream.tokens = tokens
   stream.index = 0
-  return parserecursive(stream)
+  return parseapplication(stream, [])
 }
 
-function parserecursive(stream) {
-
+function parseapplication(stream, context) {
+  let currentnode = parselambda(stream, [ ...context ])
+  while(stream.tokens[stream.index] != ')'  && stream.index < stream.tokens.length){ //well, almost always, anyways
+    let newnode = {}
+    newnode.type = 'Application'
+    newnode.left = currentnode
+    newnode.right = parselambda(stream, [ ...context ])
+    currentnode = newnode
+  }
+  if(stream.index >= stream.tokens.length){
+    throw new Error("Unexpected end of token stream when parsing")
+  }
+  return currentnode
 }
 
-var typablecodes = {}
-alphabet = "abcdefghijklmnopqrstuvwxyz"
+function parselambda(stream, context) {
+  if(stream.tokens[stream.index] === LAMBDA){
+    stream.index++;
+    if(singlechartokens.includes(stream.tokens[stream.index])){
+      throw new Error("Unexpected token " + stream.tokens[stream.index] + " at index " + stream.index + ".")
+    }
+    let newname = stream.tokens[stream.index]
+    stream.index++;
+    if(stream.tokens[stream.index] != '.'){
+      throw new Error("Unexpected token " + stream.tokens[stream.index] + " at index " + stream.index + ".")
+    }
+    stream.index++;
+    let newnode = {}
+    newnode.type = 'Lambda'
+    newnode.preferredname = newname
+    context.unshift(newname)
+    newnode.content = parseapplication( stream, [...context] )
+    return newnode
+  }
+  else{
+    return parseatom(stream, [...context])
+  }
+}
+
+function parseatom(stream, context){
+  if(stream.tokens[stream.index] === '('){
+    stream.index++;
+    let returnval = parseapplication(stream, [...context])
+    stream.index++;
+    return returnval
+  }
+  else{
+    if(singlechartokens.includes(stream.tokens[stream.index])){
+      throw new Error("Unexpected token " + stream.tokens[stream.index] + " at index " + stream.index + ".")
+    }
+    let varname = stream.tokens[stream.index]
+    let varindex = context.indexOf(varname)
+    stream.index++;
+    let newnode = {}
+    newnode.type = 'Variable'
+    if(varindex === -1){
+      newnode.bound = false
+      newnode.name = varname
+    }
+    else{
+      newnode.bound = true
+      newnode.index = varindex + 1 // De Bruijn index, starts at 1 by spec
+    }
+    return newnode
+  }
+}
+
+let typablecodes = {}
+let alphabet = "abcdefghijklmnopqrstuvwxyz"
 for (let i = 0; i < alphabet.length; i++){
 	typablecodes["Key" + alphabet[i].toUpperCase()] = [alphabet[i],alphabet[i].toUpperCase()]
 }
