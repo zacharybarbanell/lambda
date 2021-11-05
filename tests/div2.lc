@@ -1,4 +1,4 @@
-SUCC := fn n => (fn f => fn x => f (n f x));
+SUCC := fn n => fn f => fn x => f (n f x);
 ZERO := fn f => fn x => x;
 FOUR := SUCC SUCC SUCC SUCC ZERO;
 TRUE := fn x => fn y => x;
