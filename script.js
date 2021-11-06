@@ -20,6 +20,13 @@ let LAMBDA = "λ"
 
 let single_char_tokens = [LAMBDA, '.', '(', ')']
 
+function replace_object(a, b) {
+  for(let key in a) {
+    delete a[key];
+  }
+  Object.assign(a, b);
+}
+
 function draw() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -164,45 +171,111 @@ function parse_atom(stream, context, parent){
   }
 }
 
+function normalized(ast){ //doesn't necesarially halt
+  let new_tree = copy_subtree(ast)
+  while(normalize_step(new_tree));
+  return new_tree
+}
+
+function normalize_step(node){
+  if(beta_reducable(node)){
+    replace_object(node,beta_reduce(node))
+    return true
+  }
+  else{
+    if(node.type === 'Application'){
+      return normalize_step(node.right) || normalize_step(node.left)
+    } else if (node.type === 'Lambda') {
+      return normalize_step(node.content)
+    } else if (node.type === 'Variable') {
+      return false
+    } else {
+      throw new Error("Unrecognized node type")
+    }
+  }
+}
+
+function beta_reducable(node){
+  return node.type === 'Application' && node.left.type === 'Lambda'
+}
+
 function beta_reduce(node) {
-  if (node.type !== 'Application' || node.left.type !== 'Lambda') {
+  if ( !beta_reducable(node) ) {
     throw new Error("This node is not beta reducable.");
   }
   let argument = node.right;
   let to_replace = node.left;
   substitiute(argument, to_replace, node.left);
+  node.left.content.parent = node.parent;
   return node.left.content;
 }
 
 function substitiute(source, target, node) {
+  let children = [];
   if (node.type === 'Lambda') {
-    if (node.content.type === 'Variable') {
-      if (node.content.bound && node.content.binding === target) {
-        node.content = copy_subtree(source);
-      }
-    } else {
-      substitiute(source, target, node.content);
-    }
+    children = ['content']
   } else if (node.type === 'Application') {
-    if (node.left.type === 'Variable') {
-      if (node.left.bound && node.left.binding === target) {
-        node.left = copy_subtree(source);
-      }
-    } else {
-      substitiute(source, target, node.left);
-    }
-    if (node.right.type === 'Variable') {
-      if (node.right.bound && node.right.binding === target) {
-        node.right = copy_subtree(source);
-      }
-    } else {
-      substitiute(source, target, node.right);
-    }
+    children = ['left', 'right']
   } else if (node.type === 'Variable') {
     throw new Error("Internal logic error");
   } else {
     throw new Error("Unrecognized node type");
   }
+  for (const child of children){
+    if (node[child].type === 'Variable') {
+      if (node[child].bound && node[child].binding === target) {
+        node[child] = copy_subtree(source);
+        node[child].parent = node;
+      }
+    } else {
+      substitiute(source, target, node[child]);
+    }
+  }
+}
+
+function with_renamed_variables(ast){
+  let new_tree = copy_subtree(ast)
+  rename_subtree(new_tree)
+  return new_tree
+}
+
+function rename_subtree(node){
+  if(node.type === 'Application'){
+    rename_subtree(node.left)
+    rename_subtree(node.right)
+  } else if (node.type === 'Lambda') {
+    while(find_conflict(node.content,node.preferred_name,[node])){
+        node.preferred_name = rename_variable(node.preferred_name)
+    }
+    rename_subtree(node.content)
+  } else if (node.type === 'Variable') {
+    // nothing to do here
+  } else {
+    throw new Error("Unrecognized node type");
+  }
+}
+
+function find_conflict(node, name, seen){
+  if(node.type === 'Application'){
+    return find_conflict(node.left, name, seen) || find_conflict(node.right, name, seen)
+  } else if (node.type === 'Lambda') {
+    if (node.preferred_name === name){
+      seen.push(node)
+    }
+    return find_conflict(node.content, name, seen)
+  } else if (node.type === 'Variable' ) {
+    if(node.bound){
+      return node.binding.preferred_name === name && seen.indexOf(node.binding) === -1
+    } else {
+      return node.name === name
+    }
+  } else {
+    throw new Error("Unrecognized node type");
+  }
+}
+
+function rename_variable(name){
+  return name + "'"
 }
 
 function copy_subtree(node) {
@@ -236,7 +309,7 @@ function print_ast(node) {
   if (node.type === 'Lambda') {
     return "(" + LAMBDA + node.preferred_name + ". " + print_ast(node.content) + ")";
   } else if (node.type === 'Application') {
-    return print_ast(node.left) + " " + print_ast(node.right);
+    return '(' + print_ast(node.left) + " " + print_ast(node.right) + ')' ;
   } else if (node.type === 'Variable') {
     if (node.bound) {
       return node.binding.preferred_name;
