@@ -184,7 +184,7 @@ function normalize_step(node){
   }
   else{
     if(node.type === 'Application'){
-      return normalize_step(node.right) || normalize_step(node.left)
+      return normalize_step(node.left) || normalize_step(node.right)
     } else if (node.type === 'Lambda') {
       return normalize_step(node.content)
     } else if (node.type === 'Variable') {
