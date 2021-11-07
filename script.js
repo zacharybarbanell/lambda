@@ -3,8 +3,36 @@
 let canvas = document.getElementById("myCanvas");
 let ctx = canvas.getContext("2d");
 
+let palette = {}
 
+palette.blue = {}
+palette.blue.light = "#6C6AC3"
+palette.blue.dark = "#704BC9"
+palette.yellow = {}
+palette.yellow.light = "#FFCF6B"
+palette.yellow.dark = "#FFB969"
+palette.green = {}
+palette.green.light = "#66A771"
+palette.green.dark = "#4F8D73"
+palette.purple = {}
+palette.purple.light = "#9E46B7"
+palette.purple.dark = "#8C34B8"
 
+function draw_thing(color_scheme,x,y,width,height){
+  let arc_param = 0.5 //range: 0-inf
+  ctx.lineWidth = 10
+  ctx.strokeStyle = color_scheme.dark
+  ctx.fillStyle = color_scheme.light
+  ctx.beginPath()
+  let angle = Math.atan2(1,2*arc_param)
+  let radius = Math.sqrt((height/2)**2+(height*arc_param)**2)
+  ctx.arc(x + width - height * arc_param,y + height * 0.5, radius, 0 - angle, angle)
+  ctx.arc(x + height * arc_param,y + height * 0.5, radius, Math.PI - angle, Math.PI + angle)
+  ctx.arc(x + width - height * arc_param,y + height * 0.5, radius, 0 - angle, angle)
+  ctx.stroke()
+  ctx.rect(x,y + ctx.lineWidth * 0.5,width,height  - ctx.lineWidth)
+  ctx.fill()
+}
 
 
 window.addEventListener("load", _e => {
@@ -27,24 +55,46 @@ function replace_object(a, b) {
   Object.assign(a, b);
 }
 
+function get_children_names(node) {
+  if (node.type === 'Lambda') {
+    children = ['content']
+  } else if (node.type === 'Application') {
+    children = ['left', 'right']
+  } else if (node.type === 'Variable') {
+    return []
+  } else {
+    throw new Error("Unrecognized node type");
+  }
+}
+
 function draw() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-
-
-	ctx.fillStyle = "rgb(" + (200 + (anim_counter % 60 >= 30 ? 30 - (anim_counter % 30) : (anim_counter % 30))) +
-								"," + (200 + (anim_counter % 60 >= 30 ? 30 - (anim_counter % 30) : (anim_counter % 30))) +
-								"," + (200 + (anim_counter % 60 >= 30 ? 30 - (anim_counter % 30) : (anim_counter % 30))) + ")";
+  ctx.fillStyle = "#FFFFFF";
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
-	anim_counter += 1;
+
+
+  ctx.fillStyle = "black";
+	ctx.font = "48px monospace";
+  let font_height =
+
+
+
+  draw_thing(palette.blue,100,100,ctx.measureText(work_string).width,48)
+
 
 	ctx.fillStyle = "black";
 	ctx.font = "48px monospace";
-  ctx.fillText(work_string, 10, 48 + 10);
+  ctx.fillText(work_string, 100, 48 + 100);
   if (anim_counter % 40 <= 19) {
-	   ctx.fillRect(10 + ctx.measureText(work_string).width,10,5,48)
+	   ctx.fillRect(100 + ctx.measureText(work_string).width,10,5,48)
   }
 
+
+
+
+
+  anim_counter += 1;
 	window.requestAnimationFrame(draw);
 }
 
@@ -211,16 +261,7 @@ function beta_reduce(node) {
 }
 
 function substitiute(source, target, node) {
-  let children = [];
-  if (node.type === 'Lambda') {
-    children = ['content']
-  } else if (node.type === 'Application') {
-    children = ['left', 'right']
-  } else if (node.type === 'Variable') {
-    throw new Error("Internal logic error");
-  } else {
-    throw new Error("Unrecognized node type");
-  }
+  let children = get_children_names(node);
   for (const child of children){
     if (node[child].type === 'Variable') {
       if (node[child].bound && node[child].binding === target) {
