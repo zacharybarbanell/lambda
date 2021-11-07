@@ -1,11 +1,11 @@
-SUCC := λn. λf. λx. f (n f x);
-ZERO := λf. λx. x;
-FOUR := SUCC SUCC SUCC SUCC ZERO;
-TRUE := λt. λe. t;
-FALSE := λt. λe. e;
-PAIR := λa. λb. λs. s a b;
-FST := λp. p TRUE;
-SND := λp. p FALSE;
-T := λp. PAIR (SND p) (SUCC (FST p));
-DIV2 := λn. FST (n T (PAIR ZERO ZERO));
-MAIN := PRED FOUR;
+SUCC := λn. λf. λx. f (n f x)
+ZERO := λf. λx. x
+FOUR := SUCC SUCC SUCC SUCC ZERO
+TRUE := λt. λe. t
+FALSE := λt. λe. e
+PAIR := λa. λb. λs. s a b
+FST := λp. p TRUE
+SND := λp. p FALSE
+T := λp. PAIR (SND p) (SUCC (FST p))
+DIV2 := λn. FST (n T (PAIR ZERO ZERO))
+PRED FOUR

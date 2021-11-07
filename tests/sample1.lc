@@ -1,6 +1,6 @@
-SUCC := λn. (λf. λx. f (n f x));
-ZERO := (λf. λx. x);
-ONE := SUCC ZERO;
-TWO := SUCC ONE;
-THREE := SUCC TWO;
-MAIN := THREE;
+SUCC := λn. (λf. λx. f (n f x))
+ZERO := λf. λx. x
+ONE := SUCC ZERO
+TWO := SUCC ONE
+THREE := SUCC TWO
+THREE

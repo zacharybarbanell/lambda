@@ -127,8 +127,45 @@ type_codes["Period"] = [".","."]
 
 document.onkeydown = key_pressed;
 
-function parse(str){
-  let tokens = []
+function parse_lc(str) {
+  for (let i = 0; i < str.len; i++) {
+    while (str[i] === ' ' && i < str.len) i++;
+    let reserved_ast_list = {};
+    let reserved_name = '';
+    while(i < str.length && alphabet.toUpperCase().includes(str[i])) {
+      reserved_name += str[i];
+      i++;
+    }
+    i--;
+    while (str[i] === ' ' && i < str.len) i++;
+    if (reserved_name !== '') {
+      if (i < str.len-1 && str[i] === ':' && str[i+1] === '=') {
+        i += 2;
+      } else {
+        throw new Error("Unexpected symbol " + str[i] + " while tokenizing");
+      }
+    }
+    while (str[i] === ' ' && i < str.len) i++;
+    if (str[i] === '(' || str[i] === LAMBDA) {
+      for (let j = i; j < str.len || str[j] === '\n'; j++);
+      if (str[j-1] === '\r') j--;
+      let parsable_line = str.slice(i,j);
+      i += j;
+    } else {
+      throw new Error("Unexpected symbol " + str[i] + " while tokenizing");
+    }
+    if (reserved_name === '') {
+      parse(reserved_ast_list, parsable_line);
+      i = str.len;
+    } else  {
+      let reserved_ast = parse(reserved_ast_list, parsable_line);
+      reserved_ast_list[reserved_name] = reserved_ast;
+    }
+  }
+}
+
+function parse(reserved_ast_list, str){
+  let tokens = [];
   for (let i = 0; i < str.length; i++) {
     if (str[i] === ' ') {
       //pass
@@ -143,23 +180,23 @@ function parse(str){
       i--; //because it's incremented in the loop
       tokens.push(thisname);
     } else {
-      throw new Error("Unexpected symbol " + str[i] + " while tokenizing");
+
     }
   }
   tokens.push(')'); //to make it so that the logic can always assume there's another character
   let stream = {};
   stream.tokens = tokens;
   stream.index = 0;
-  return parse_application(stream, {}, null);
+  return parse_application(reserved_ast_list, stream, {}, null);
 }
 
-function parse_application(stream, context, parent) {
-  let current_node = parse_lambda(stream, { ...context }, parent);
+function parse_application(reserved_ast_list, stream, context, parent) {
+  let current_node = parse_lambda(reserved_ast_list, stream, { ...context }, parent);
   while (stream.tokens[stream.index] != ')'  && stream.index < stream.tokens.length) { //well, almost always, anyways
     let new_node = {};
     new_node.type = 'Application';
     new_node.left = current_node;
-    new_node.right = parse_lambda(stream, { ...context }, new_node);
+    new_node.right = parse_lambda(reserved_ast_list, stream, { ...context }, new_node);
     current_node.parent = new_node;
     current_node = new_node;
   }
@@ -170,7 +207,7 @@ function parse_application(stream, context, parent) {
   return current_node;
 }
 
-function parse_lambda(stream, context, parent) {
+function parse_lambda(reserved_ast_list, stream, context, parent) {
   if (stream.tokens[stream.index] === LAMBDA) {
     stream.index++;
     if (single_char_tokens.includes(stream.tokens[stream.index])) {
@@ -186,18 +223,23 @@ function parse_lambda(stream, context, parent) {
     new_node.type = 'Lambda';
     new_node.preferred_name = newname;
     context[newname] = new_node;
-    new_node.content = parse_application( stream, {...context}, new_node);
+    new_node.content = parse_application(reserved_ast_list, stream, {...context}, new_node);
     new_node.parent = parent;
     return new_node;
   } else {
-    return parse_atom(stream, {...context}, parent);
+    return parse_atom(reserved_ast_list, stream, {...context}, parent);
   }
 }
 
-function parse_atom(stream, context, parent){
+function parse_atom(reserved_ast_list, stream, context, parent){
   if (stream.tokens[stream.index] === '(') {
     stream.index++;
-    let return_val = parse_application(stream, {...context}, parent);
+    let return_val = parse_application(reserved_ast_list, stream, {...context}, parent);
+    stream.index++;
+    return return_val;
+  } else if (reserved_ast_list[stream.tokens[stream.index]] !== undefined) {
+    let return_val = copy_subtree(reserved_ast_list[stream.tokens[stream.index]]);
+    return_val.parent = parent;
     stream.index++;
     return return_val;
   } else {
@@ -228,19 +270,18 @@ function normalized(ast){ //doesn't necesarially halt
 }
 
 function normalize_step(node){
-  if(beta_reducable(node)){
-    replace_object(node,beta_reduce(node))
-    return true
-  }
-  else{
-    if(node.type === 'Application'){
+  if (beta_reducable(node)) {
+    replace_object(node,beta_reduce(node));
+    return true;
+  } else {
+    if (node.type === 'Application') {
       return normalize_step(node.left) || normalize_step(node.right)
     } else if (node.type === 'Lambda') {
-      return normalize_step(node.content)
+      return normalize_step(node.content);
     } else if (node.type === 'Variable') {
-      return false
+      return false;
     } else {
-      throw new Error("Unrecognized node type")
+      throw new Error("Unrecognized node type");
     }
   }
 }
