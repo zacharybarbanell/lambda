@@ -18,6 +18,31 @@ palette.purple = {}
 palette.purple.light = "#9E46B7"
 palette.purple.dark = "#8C34B8"
 
+function sanity_check(node){ //checks if all variables are contained in their bindings
+  if(node.type === 'Variable' && node.bound){
+    let looking_at = node.parent
+    while(looking_at !== null){
+      if(looking_at === node.binding){
+        break;
+      }
+      looking_at = looking_at.parent
+    }
+    if(looking_at === null){
+      return false
+    }
+    else{
+      return true
+    }
+  }
+  else{
+    let return_val = true
+    for(let child of get_children_names(node)){
+      return_val = return_val && sanity_check(node[child])
+    }
+    return return_val
+  }
+}
+
 function draw_thing(color_scheme,x,y,width,height){
   let arc_param = 0.5 //range: 0-inf
   ctx.lineWidth = 10
@@ -56,15 +81,17 @@ function replace_object(a, b) {
 }
 
 function get_children_names(node) {
+  let children;
   if (node.type === 'Lambda') {
     children = ['content']
   } else if (node.type === 'Application') {
     children = ['left', 'right']
   } else if (node.type === 'Variable') {
-    return []
+    children = []
   } else {
     throw new Error("Unrecognized node type");
   }
+  return children;
 }
 
 function draw() {
@@ -132,11 +159,14 @@ function parse_lc(str) {
     while (str[i] === ' ' && i < str.len) i++;
     let reserved_ast_list = {};
     let reserved_name = '';
-    while(i < str.length && alphabet.toUpperCase().includes(str[i])) {
-      reserved_name += str[i];
-      i++;
+    for (let j = i; j < str.length && alphabet.toUpperCase().includes(str[j]); j++) {
+      reserved_name += str[j];
     }
-    i--;
+    if (reserved_ast_list[reserved_name] !== undefined) {
+      reserved_name = ''
+    } else {
+      i = j - 1;
+    }
     while (str[i] === ' ' && i < str.len) i++;
     if (reserved_name !== '') {
       if (i < str.len-1 && str[i] === ':' && str[i+1] === '=') {
@@ -265,7 +295,12 @@ function parse_atom(reserved_ast_list, stream, context, parent){
 
 function normalized(ast){ //doesn't necesarially halt
   let new_tree = copy_subtree(ast)
-  while(normalize_step(new_tree));
+  while(normalize_step(new_tree)){
+    console.log(print_ast(with_renamed_variables(new_tree)))
+    if(!sanity_check(new_tree)){
+      throw new Error();
+    }
+  }
   return new_tree
 }
 
