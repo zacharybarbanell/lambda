@@ -1,6 +1,6 @@
 SUCC := λn. λf. λx. f (n f x)
 ZERO := λf. λx. x
-TWO := SUCC SUCC ZERO
+TWO := SUCC (SUCC ZERO)
 TRUE := λt. λe. t
 FALSE := λt. λe. e
 AND := λt. λe. t e t

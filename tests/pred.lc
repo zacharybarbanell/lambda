@@ -1,6 +1,6 @@
 SUCC := λn. λf. λx. f (n f x)
 ZERO := λf. λx. x
-FOUR := SUCC SUCC SUCC SUCC ZERO
+FOUR := SUCC (SUCC (SUCC (SUCC ZERO)))
 TRUE := λt. λe. t
 FALSE := λt. λe. e
 PAIR := λa. λb. λs. s a b

@@ -1,6 +1,6 @@
 SUCC := λn. (λf. λx. f (n f x))
 ZERO := (λf. λx. x)
-TWO := SUCC SUCC ZERO
+TWO := SUCC (SUCC ZERO)
 THREE := SUCC TWO
 POWER := λn. λm. m n
 POWER THREE TWO

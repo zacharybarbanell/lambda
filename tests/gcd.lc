@@ -1,7 +1,7 @@
 SUCC := λn. λf. λx. f (n f x)
 ZERO := λf. λx. x
 TWO := SUCC (SUCC ZERO)
-FOUR := SUCC (SUCC TWO)
+FIVE := SUCC (SUCC (SUCC TWO))
 TRUE := λt. λe. t
 FALSE := λt. λe. e
 AND := λt. λe. t e t
@@ -14,4 +14,7 @@ T := λp. PAIR (SND p) (SUCC (SND p))
 PRED := λn. FST (n T (PAIR ZERO ZERO))
 MINUS := λm. λn. n PRED m
 LESS := λn. λm. ISZERO (MINUS n m) AND NOT ISZERO (MINUS m n)
-LESS TWO FOUR
+Y := λf. (λx. f (x x)) (λx. f (x x))
+GCDR := λf. λn. λm. LESS m n (f m n) (ISZERO n m (f n (MINUS m n)))
+GCD := Y GCDR
+GCD FIVE TWO

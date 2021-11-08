@@ -73,13 +73,6 @@ let LAMBDA = "λ"
 
 let single_char_tokens = [LAMBDA, '.', '(', ')']
 
-function replace_object(a, b) {
-  for(let key in a) {
-    delete a[key];
-  }
-  Object.assign(a, b);
-}
-
 function get_children_names(node) {
   let children;
   if (node.type === 'Lambda') {
@@ -89,7 +82,7 @@ function get_children_names(node) {
   } else if (node.type === 'Variable') {
     children = []
   } else {
-    throw new Error("Unrecognized node type");
+    throw new Error("Unrecognized node type: " + node.type);
   }
   return children;
 }
@@ -155,39 +148,46 @@ type_codes["Period"] = [".","."]
 document.onkeydown = key_pressed;
 
 function parse_lc(str) {
-  for (let i = 0; i < str.len; i++) {
-    while (str[i] === ' ' && i < str.len) i++;
-    let reserved_ast_list = {};
+  let reserved_ast_list = {};
+  for (let i = 0; i < str.length; i++) {
+    while (str[i] === ' ' && i < str.length) i++;
     let reserved_name = '';
-    for (let j = i; j < str.length && alphabet.toUpperCase().includes(str[j]); j++) {
-      reserved_name += str[j];
+    for (i; i < str.length && alphabet.toUpperCase().includes(str[i]); i++) {
+      reserved_name += str[i];
     }
     if (reserved_ast_list[reserved_name] !== undefined) {
+      i -= reserved_name.length
       reserved_name = ''
-    } else {
-      i = j - 1;
     }
-    while (str[i] === ' ' && i < str.len) i++;
+    //console.log("RESERVED NAME: |"+reserved_name+"|")
+    while (str[i] === ' ' && i < str.length) i++;
     if (reserved_name !== '') {
-      if (i < str.len-1 && str[i] === ':' && str[i+1] === '=') {
+      if (i < str.length-1 && str[i] === ':' && str[i+1] === '=') {
         i += 2;
       } else {
         throw new Error("Unexpected symbol " + str[i] + " while tokenizing");
       }
     }
-    while (str[i] === ' ' && i < str.len) i++;
-    if (str[i] === '(' || str[i] === LAMBDA) {
-      for (let j = i; j < str.len || str[j] === '\n'; j++);
-      if (str[j-1] === '\r') j--;
-      let parsable_line = str.slice(i,j);
-      i += j;
+    while (str[i] === ' ' && i < str.length) i++;
+    let parsable_line;
+
+    let k = i;
+    for (k; k < str.length && str[k] !== '\n'; k++);
+    if (str[k-1] === '\r') {
+      parsable_line = str.slice(i,k-1);
     } else {
-      throw new Error("Unexpected symbol " + str[i] + " while tokenizing");
+      parsable_line = str.slice(i,k);
     }
+    i = k;
+
     if (reserved_name === '') {
-      parse(reserved_ast_list, parsable_line);
-      i = str.len;
+      //console.log("FINAL LINE: "+parsable_line);
+      console.log(reserved_ast_list);
+      let return_val = parse(reserved_ast_list, parsable_line)
+      console.log(return_val)
+      return return_val;
     } else  {
+      //console.log("RESERVED: |"+parsable_line+"|");
       let reserved_ast = parse(reserved_ast_list, parsable_line);
       reserved_ast_list[reserved_name] = reserved_ast;
     }
@@ -201,9 +201,9 @@ function parse(reserved_ast_list, str){
       //pass
     } else if (single_char_tokens.includes(str[i])) {
       tokens.push(str[i]);
-    } else if (alphabet.includes(str[i])) {
+    } else if (alphabet.includes(str[i]) || alphabet.toUpperCase().includes(str[i])) {
       let thisname = '';
-      while(i < str.length && alphabet.includes(str[i])) {
+      while(i < str.length && (alphabet.includes(str[i]) || alphabet.toUpperCase().includes(str[i]))) {
         thisname += str[i];
         i++;
       }
@@ -271,9 +271,11 @@ function parse_atom(reserved_ast_list, stream, context, parent){
     let return_val = copy_subtree(reserved_ast_list[stream.tokens[stream.index]]);
     return_val.parent = parent;
     stream.index++;
+    //console.log(return_val)
     return return_val;
   } else {
     if (single_char_tokens.includes(stream.tokens[stream.index])) {
+      console.log(stream);
       throw new Error("Unexpected token " + stream.tokens[stream.index] + " at index " + stream.index + ".");
     }
     let var_name = stream.tokens[stream.index];
@@ -295,29 +297,34 @@ function parse_atom(reserved_ast_list, stream, context, parent){
 
 function normalized(ast){ //doesn't necesarially halt
   let new_tree = copy_subtree(ast)
-  while(normalize_step(new_tree)){
+  while(true){
+    let returned_val = normalize_step(new_tree)
+    if(returned_val === false){
+      break
+    } else {
+      new_tree = returned_val
+    }
+    //console.log(with_renamed_variables(new_tree))
     console.log(print_ast(with_renamed_variables(new_tree)))
     if(!sanity_check(new_tree)){
-      throw new Error();
+      throw new Error("Sanity check failed, aborting.");
     }
   }
   return new_tree
 }
 
 function normalize_step(node){
-  if (beta_reducable(node)) {
-    replace_object(node,beta_reduce(node));
-    return true;
+  if ( beta_reducable(node) ) {
+    return beta_reduce(node);
   } else {
-    if (node.type === 'Application') {
-      return normalize_step(node.left) || normalize_step(node.right)
-    } else if (node.type === 'Lambda') {
-      return normalize_step(node.content);
-    } else if (node.type === 'Variable') {
-      return false;
-    } else {
-      throw new Error("Unrecognized node type");
+    for(let child of get_children_names(node)){
+      let returned_val = normalize_step(node[child]);
+      if(returned_val){
+        node[child] = returned_val;
+        return node;
+      }
     }
+    return false;
   }
 }
 
@@ -368,7 +375,7 @@ function rename_subtree(node){
   } else if (node.type === 'Variable') {
     // nothing to do here
   } else {
-    throw new Error("Unrecognized node type");
+    throw new Error("Unrecognized node type: " + node.type);
   }
 }
 
@@ -382,12 +389,12 @@ function find_conflict(node, name, seen){
     return find_conflict(node.content, name, seen)
   } else if (node.type === 'Variable' ) {
     if(node.bound){
-      return node.binding.preferred_name === name && seen.indexOf(node.binding) === -1
+      return (node.binding.preferred_name === name) && (seen.indexOf(node.binding) === -1)
     } else {
       return node.name === name
     }
   } else {
-    throw new Error("Unrecognized node type");
+    throw new Error("Unrecognized node type: " + node.type);
   }
 }
 
@@ -414,10 +421,13 @@ function copy_subtree_recursive(node, parent, terms, new_terms) {
       let i = terms.indexOf(new_node.binding);
       if (i !== -1) {
         new_node.binding = new_terms[i];
+      } else {
+        //this is ok because variables might refer to lambdas outside the subtree
       }
     }
   } else {
-    throw new Error("Unrecognized node type");
+    console.log(new_node);
+    throw new Error("Unrecognized node type: " + new_node.type);
   }
   return new_node;
 }
@@ -434,6 +444,6 @@ function print_ast(node) {
       return node.name;
     }
   } else {
-    throw new Error("Unrecognized node type");
+    throw new Error("Unrecognized node type: " + node.type);
   }
 }
