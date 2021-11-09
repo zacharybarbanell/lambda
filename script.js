@@ -18,7 +18,11 @@ palette.purple = {}
 palette.purple.light = "#9E46B7"
 palette.purple.dark = "#8C34B8"
 
-function sanity_check(node){ //checks if all variables are contained in their bindings
+
+
+
+
+function sanity_check(node){
   if(node.type === 'Variable' && node.bound){
     let looking_at = node.parent
     while(looking_at !== null){
@@ -27,25 +31,32 @@ function sanity_check(node){ //checks if all variables are contained in their bi
       }
       looking_at = looking_at.parent
     }
-    if(looking_at === null){
-      return false
-    }
-    else{
-      return true
-    }
+    return looking_at !== null
   }
   else{
     let return_val = true
     for(let child of get_children_names(node)){
-      return_val = return_val && sanity_check(node[child])
+      return_val = return_val && sanity_check(node[child]) && node[child].parent === node
     }
     return return_val
   }
 }
 
+
+let vertical_clearance = 7
+let horizontal_clearance = 15
+let apply_clearance = 20
+let arc_param = 1.0 //range: 0-inf, higher number is flatter
+let stroke_width = 3
+let font_size = 36
+ctx.font = font_size + "px monospace";
+let metrics = ctx.measureText('.')
+let font_height_lower = metrics.fontBoundingBoxDescent
+let font_height_upper = metrics.fontBoundingBoxAscent
+let font_height = font_height_lower + font_height_upper
+
 function draw_thing(color_scheme,x,y,width,height){
-  let arc_param = 0.5 //range: 0-inf
-  ctx.lineWidth = 10
+  ctx.lineWidth = 2 * stroke_width
   ctx.strokeStyle = color_scheme.dark
   ctx.fillStyle = color_scheme.light
   ctx.beginPath()
@@ -57,6 +68,65 @@ function draw_thing(color_scheme,x,y,width,height){
   ctx.stroke()
   ctx.rect(x,y + ctx.lineWidth * 0.5,width,height  - ctx.lineWidth)
   ctx.fill()
+}
+
+function get_depth(node) { //this would be a cute oneliner in python but we can't have nice things I guess
+  let max_seen = 0
+  for(let child of get_children_names(node)){
+    let new_val = 1 + get_depth(node[child])
+    if(new_val > max_seen){
+      max_seen = new_val
+    }
+  }
+  return max_seen
+}
+
+function get_render_width(node){
+  if (node.type === 'Lambda') {
+    return 2 * horizontal_clearance + ctx.measureText(LAMBDA + node.preferred_name + '.').width + get_render_width(node.content)
+  } else if (node.type === 'Application') {
+    return 2 * horizontal_clearance + apply_clearance + get_render_width(node.left) + get_render_width(node.right)
+  } else if (node.type === 'Variable') {
+    return 2 * horizontal_clearance + ctx.measureText(node.binding.preferred_name).width
+  } else {
+    throw new Error("Unrecognized node type: " + node.type);
+  }
+}
+
+function get_color(node) {
+  if (node.type === 'Lambda') {
+    return palette.yellow
+  } else if (node.type === 'Application') {
+    return palette.blue
+  } else if (node.type === 'Variable') {
+    return palette.green
+  } else {
+    throw new Error("Unrecognized node type: " + node.type);
+  }
+}
+
+function render_ast(node, left_x, mid_y){ //assumes that font and such are set up
+  let depth = get_depth(node)
+  let width = get_render_width(node)
+  let color = get_color(node)
+  draw_thing(color, left_x + horizontal_clearance, mid_y - font_height_upper - vertical_clearance*depth, width - 2*horizontal_clearance, font_height + depth*vertical_clearance*2 )
+  ctx.fillStyle = "black";
+  if (node.type === 'Lambda') {
+    ctx.fillText(LAMBDA + node.preferred_name + '.', left_x + horizontal_clearance, mid_y);
+    render_ast(node.content,left_x + horizontal_clearance + ctx.measureText(LAMBDA + node.preferred_name + '.').width, mid_y)
+  } else if (node.type === 'Application') {
+    ctx.lineWidth = stroke_width
+    ctx.beginPath()
+    ctx.moveTo(left_x + horizontal_clearance + get_render_width(node.left) + apply_clearance/2, mid_y - font_height_upper - vertical_clearance*depth)
+    ctx.lineTo(left_x + horizontal_clearance + get_render_width(node.left) + apply_clearance/2, mid_y + font_height_lower + vertical_clearance*depth)
+    ctx.stroke()
+    render_ast(node.left,left_x + horizontal_clearance, mid_y)
+    render_ast(node.right, left_x + horizontal_clearance + get_render_width(node.left) + apply_clearance, mid_y)
+  } else if (node.type === 'Variable') {
+    ctx.fillText(node.binding.preferred_name, left_x + horizontal_clearance, mid_y);
+  } else {
+    throw new Error("Unrecognized node type: " + node.type);
+  }
 }
 
 
@@ -90,24 +160,30 @@ function get_children_names(node) {
 function draw() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  ctx.fillStyle = "#FFFFFF";
+  ctx.fillStyle = "white";
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  ctx.font = font_size + "px monospace";
+
+
+
+
+
+  draw_thing(palette.blue,100,100,ctx.measureText(work_string).width,font_height)
 
   ctx.fillStyle = "black";
-	ctx.font = "48px monospace";
-  let font_height =
-
-
-
-  draw_thing(palette.blue,100,100,ctx.measureText(work_string).width,48)
-
-
-	ctx.fillStyle = "black";
-	ctx.font = "48px monospace";
-  ctx.fillText(work_string, 100, 48 + 100);
+  let lines = work_string.split('\n')
+  for(let i = 0; i < lines.length; i++){
+      ctx.fillText(lines[i], 100, font_height_upper + 100 + (font_height + 10)*i);
+  }
   if (anim_counter % 40 <= 19) {
-	   ctx.fillRect(100 + ctx.measureText(work_string).width,10,5,48)
+	   ctx.fillRect(100 + ctx.measureText(work_string).width,10,5,font_height)
+  }
+
+  try {
+    render_ast(parse_lc(work_string),100,700)
+  } catch (e) {
+
   }
 
 
@@ -143,7 +219,10 @@ type_codes["Digit0"] = ["",")"]
 type_codes["Backspace"] = [null,null]
 type_codes["Backslash"] = [LAMBDA,LAMBDA]
 type_codes["Space"] = [" "," "]
-type_codes["Period"] = [".","."]
+type_codes["Period"] = [".",""]
+type_codes["Enter"] = ["\n","\n"]
+type_codes["Semicolon"] = ["",":"]
+type_codes["Equal"] = ["=",""]
 
 document.onkeydown = key_pressed;
 
@@ -305,7 +384,7 @@ function normalized(ast){ //doesn't necesarially halt
       new_tree = returned_val
     }
     //console.log(with_renamed_variables(new_tree))
-    console.log(print_ast(with_renamed_variables(new_tree)))
+    //console.log(print_ast(with_renamed_variables(new_tree)))
     if(!sanity_check(new_tree)){
       throw new Error("Sanity check failed, aborting.");
     }
