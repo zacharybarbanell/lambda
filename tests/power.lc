@@ -5,6 +5,5 @@ ONE   := SUCC ZERO
 TWO   := SUCC ONE
 THREE := SUCC TWO
 MULT  := λn. λm. n PLUS m ZERO
-
-POWER := λn. λm. m MULT ONE n ???
+POWER := λn. λm. m (MULT n) ONE
 POWER THREE TWO

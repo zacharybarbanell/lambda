@@ -261,9 +261,9 @@ function parse_lc(str) {
 
     if (reserved_name === '') {
       //console.log("FINAL LINE: "+parsable_line);
-      console.log(reserved_ast_list);
+      //console.log(reserved_ast_list);
       let return_val = parse(reserved_ast_list, parsable_line)
-      console.log(return_val)
+      //console.log(return_val)
       return return_val;
     } else  {
       //console.log("RESERVED: |"+parsable_line+"|");

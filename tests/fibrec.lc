@@ -1,0 +1,17 @@
+SUCC := λn. λf. λx. f (n f x)
+ZERO := λf. λx. x
+FIVE := SUCC (SUCC (SUCC (SUCC (SUCC ZER))))
+TRUE := λt. λe. t
+FALSE := λt. λe. e
+AND := λt. λe. t e t
+NOT := λt. t FALSE TRUE
+ISZERO := λn. n (λm. FALSE) TRUE
+PAIR := λa. λb. λs. s a b
+FST := λp. p TRUE
+SND := λp. p FALSE
+T := λp. PAIR (SND p) (SUCC (SND p))
+PRED := λn. FST (n T (PAIR ZERO ZERO))
+Y := λf. (λx. f (x x)) (λx. f (x x))
+FIBTMP := λf. λn. ISZERO (PRED n) n (PLUS (f (PRED n)) (f (PRED (PRED n))))
+FIBREC := Y GCDR
+FIBREC FIVE
