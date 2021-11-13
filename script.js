@@ -18,7 +18,7 @@ palette.purple = {}
 palette.purple.light = "#9E46B7"
 palette.purple.dark = "#8C34B8"
 
-
+let extra_node_properties = ["depth_memo","width_memo"]
 
 
 
@@ -43,10 +43,12 @@ function sanity_check(node){
 }
 
 
-let vertical_clearance = 7
-let horizontal_clearance = 15
-let apply_clearance = 20
+
 let arc_param = 1.0 //range: 0-inf, higher number is flatter
+let vertical_clearance = 7
+let horizontal_clearance = vertical_clearance * arc_param //could be bigger
+let text_horizontal_clearance = 0 //could be bigger
+let apply_clearance = 20
 let stroke_width = 3
 let font_size = 36
 ctx.font = font_size + "px monospace";
@@ -60,17 +62,20 @@ function draw_thing(color_scheme,x,y,width,height){
   ctx.strokeStyle = color_scheme.dark
   ctx.fillStyle = color_scheme.light
   ctx.beginPath()
-  let angle = Math.atan2(1,2*arc_param)
-  let radius = Math.sqrt((height/2)**2+(height*arc_param)**2)
-  ctx.arc(x + width - height * arc_param,y + height * 0.5, radius, 0 - angle, angle)
-  ctx.arc(x + height * arc_param,y + height * 0.5, radius, Math.PI - angle, Math.PI + angle)
-  ctx.arc(x + width - height * arc_param,y + height * 0.5, radius, 0 - angle, angle)
+  let angle = Math.atan2(1,arc_param)
+  let radius = Math.sqrt((height/2)**2+(height*arc_param/2)**2)
+  ctx.arc(x + width - height * arc_param/2,y + height * 0.5, radius, 0 - angle, angle)
+  ctx.arc(x + height * arc_param/2,y + height * 0.5, radius, Math.PI - angle, Math.PI + angle)
+  ctx.arc(x + width - height * arc_param/2,y + height * 0.5, radius, 0 - angle, angle)
   ctx.stroke()
   ctx.rect(x,y + ctx.lineWidth * 0.5,width,height  - ctx.lineWidth)
   ctx.fill()
 }
 
 function get_depth(node) { //this would be a cute oneliner in python but we can't have nice things I guess
+  if(node.depth_memo !== undefined){
+    return node.depth_memo
+  }
   let max_seen = 0
   for(let child of get_children_names(node)){
     let new_val = 1 + get_depth(node[child])
@@ -81,16 +86,45 @@ function get_depth(node) { //this would be a cute oneliner in python but we can'
   return max_seen
 }
 
+function calc_height(depth){
+  return font_height + depth*vertical_clearance*2
+}
+
+function calc_excess_width(height){
+  return Math.sqrt((height/2)**2 + (arc_param*height/2)**2) - (arc_param*height/2)
+}
+
 function get_render_width(node){
+  if(node.width_memo !== undefined){
+    return node.width_memo
+  }
+  let return_val;
   if (node.type === 'Lambda') {
-    return 2 * horizontal_clearance + ctx.measureText(LAMBDA + node.preferred_name + '.').width + get_render_width(node.content)
+    return_val = ctx.measureText(LAMBDA + node.preferred_name + '.').width +
+      text_horizontal_clearance +
+      calc_excess_width(calc_height(get_depth(node.content))) +
+      get_render_width(node.content) +
+      horizontal_clearance;
+    //return 2 * horizontal_clearance + ctx.measureText(LAMBDA + node.preferred_name + '.').width + get_render_width(node.content)
   } else if (node.type === 'Application') {
-    return 2 * horizontal_clearance + apply_clearance + get_render_width(node.left) + get_render_width(node.right)
+    return_val = horizontal_clearance +
+    get_render_width(node.left) +
+    calc_excess_width(calc_height(get_depth(node.left))) +
+    apply_clearance +
+    calc_excess_width(calc_height(get_depth(node.right))) +
+    get_render_width(node.right) +
+    horizontal_clearance;
+    //return 2 * horizontal_clearance + apply_clearance + get_render_width(node.left) + get_render_width(node.right)
   } else if (node.type === 'Variable') {
-    return 2 * horizontal_clearance + ctx.measureText(node.binding.preferred_name).width
+    return_val = text_horizontal_clearance +
+    ctx.measureText(node.binding.preferred_name).width +
+    text_horizontal_clearance;
+    //return 2 * horizontal_clearance + ctx.measureText(node.binding.preferred_name).width
   } else {
     throw new Error("Unrecognized node type: " + node.type);
   }
+  node.width_memo = return_val
+  return return_val
 }
 
 function get_color(node) {
@@ -109,21 +143,33 @@ function render_ast(node, left_x, mid_y){ //assumes that font and such are set u
   let depth = get_depth(node)
   let width = get_render_width(node)
   let color = get_color(node)
-  draw_thing(color, left_x + horizontal_clearance, mid_y - font_height_upper - vertical_clearance*depth, width - 2*horizontal_clearance, font_height + depth*vertical_clearance*2 )
+  draw_thing(color, left_x, mid_y - font_height_upper - vertical_clearance*depth, width, font_height + depth*vertical_clearance*2 )
   ctx.fillStyle = "black";
   if (node.type === 'Lambda') {
-    ctx.fillText(LAMBDA + node.preferred_name + '.', left_x + horizontal_clearance, mid_y);
-    render_ast(node.content,left_x + horizontal_clearance + ctx.measureText(LAMBDA + node.preferred_name + '.').width, mid_y)
+    ctx.fillText(LAMBDA + node.preferred_name + '.', left_x, mid_y);
+    render_ast(node.content,left_x + ctx.measureText(LAMBDA + node.preferred_name + '.').width +
+      text_horizontal_clearance +
+      calc_excess_width(calc_height(get_depth(node.content))), mid_y)
   } else if (node.type === 'Application') {
     ctx.lineWidth = stroke_width
     ctx.beginPath()
-    ctx.moveTo(left_x + horizontal_clearance + get_render_width(node.left) + apply_clearance/2, mid_y - font_height_upper - vertical_clearance*depth)
-    ctx.lineTo(left_x + horizontal_clearance + get_render_width(node.left) + apply_clearance/2, mid_y + font_height_lower + vertical_clearance*depth)
+    ctx.moveTo(left_x + horizontal_clearance + get_render_width(node.left) +
+      calc_excess_width(calc_height(get_depth(node.left)))  + apply_clearance/2,
+      mid_y - font_height_upper - vertical_clearance*depth)
+    ctx.lineTo(left_x + horizontal_clearance + get_render_width(node.left) +
+      calc_excess_width(calc_height(get_depth(node.left)))  + apply_clearance/2,
+      mid_y + font_height_lower + vertical_clearance*depth)
     ctx.stroke()
-    render_ast(node.left,left_x + horizontal_clearance, mid_y)
-    render_ast(node.right, left_x + horizontal_clearance + get_render_width(node.left) + apply_clearance, mid_y)
+    render_ast(node.left,
+      left_x + horizontal_clearance,
+      mid_y)
+    render_ast(node.right,
+      left_x + horizontal_clearance + get_render_width(node.left) +
+      calc_excess_width(calc_height(get_depth(node.left))) + apply_clearance +
+      calc_excess_width(calc_height(get_depth(node.right))),
+      mid_y)
   } else if (node.type === 'Variable') {
-    ctx.fillText(node.binding.preferred_name, left_x + horizontal_clearance, mid_y);
+    ctx.fillText(node.binding.preferred_name, left_x + text_horizontal_clearance, mid_y);
   } else {
     throw new Error("Unrecognized node type: " + node.type);
   }
