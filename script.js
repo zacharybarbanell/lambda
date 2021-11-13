@@ -453,6 +453,50 @@ function normalize_step(node){
   }
 }
 
+function alpha_equality(node_A, node_B) {
+  return rec_alpha_equality(node_A, [], node_B, []);
+}
+
+function rec_alpha_equality(node_A, node_list_A, node_B, node_list_B) {
+  if (ast_A.type !== ast_B.type) {
+    return false;
+  } else {
+    node_list_A.push(node_A);
+    node_list_B.push(node_B);
+    if (node_A.type === 'Application') {
+      if (alpha_equality(node_A.left, node_list_A, node_B.left, node_list_B)) {
+        return alpha_equality(node_A.right, node_list_A, node_B.right, node_list_B);
+      } else {
+        return false;
+      }
+    } else if (node_A.type === 'Lambda') {
+      return alpha_equality(node_A.content, node_list_A, node_B.content, node_list_B);
+    } else if (node_A.type === 'Variable') {
+      if (node_A.bound !== node_B.bound) {
+        return false;
+      } else {
+        if (node_A.bound) {
+          let i = 0;
+          while (i < len(node_list_A)) {
+            if (node_A.binding === node_list_A[i]) {
+              if (node_B.binding === node_list_B[i]) {
+                return true;
+              } else {
+                return false;
+              }
+            }
+            i++;
+          }
+          throw new Error("Bound variable not in ast scope: " + node_A.binding);
+        }
+      }
+    } else {
+      throw new Error("Unrecognized node type: " + node_A.type);
+    }
+  }
+}
+
+
 function beta_reducable(node){
   return node.type === 'Application' && node.left.type === 'Lambda'
 }
