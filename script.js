@@ -20,6 +20,14 @@ palette.purple.dark = "#8C34B8"
 
 let extra_node_properties = ["depth_memo","width_memo"]
 
+function clean_ast(node){
+  for(property of extra_node_properties){
+    delete node["property"]
+  }
+  for(child of get_children_names(node)){
+    clean_ast(node[child])
+  }
+}
 
 
 function sanity_check(node){
@@ -45,12 +53,12 @@ function sanity_check(node){
 
 
 let arc_param = 1.0 //range: 0-inf, higher number is flatter
-let vertical_clearance = 7
+let vertical_clearance = 4
 let horizontal_clearance = vertical_clearance * arc_param //could be bigger
 let text_horizontal_clearance = 0 //could be bigger
 let apply_clearance = 20
-let stroke_width = 3
-let font_size = 36
+let stroke_width = 2
+let font_size = 24
 ctx.font = font_size + "px monospace";
 let metrics = ctx.measureText('.')
 let font_height_lower = metrics.fontBoundingBoxDescent
@@ -209,14 +217,7 @@ function draw() {
   ctx.fillStyle = "white";
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.font = font_size + "px monospace";
-
-
-
-
-
-  draw_thing(palette.blue,100,100,ctx.measureText(work_string).width,font_height)
-
+  ctx.font = font_size + "px monospace"
   ctx.fillStyle = "black";
   let lines = work_string.split('\n')
   for(let i = 0; i < lines.length; i++){
@@ -271,6 +272,19 @@ type_codes["Semicolon"] = ["",":"]
 type_codes["Equal"] = ["=",""]
 
 document.onkeydown = key_pressed;
+
+function drop_handler(e){
+  e.preventDefault();
+  if (e.dataTransfer.items) { //will fail on Internet Explorer but who cares
+    if (e.dataTransfer.items.length === 1){ //will fail if multiple files are dropped
+      e.dataTransfer.items[0].getAsFile().text().then(s => work_string = s)
+    }
+  }
+}
+
+function drag_over_handler(e) {
+  e.preventDefault();
+}
 
 function parse_lc(str) {
   let reserved_ast_list = {};
@@ -396,12 +410,13 @@ function parse_atom(reserved_ast_list, stream, context, parent){
     let return_val = copy_subtree(reserved_ast_list[stream.tokens[stream.index]]);
     return_val.parent = parent;
     stream.index++;
-    //console.log(return_val)
     return return_val;
   } else {
     if (single_char_tokens.includes(stream.tokens[stream.index])) {
-      console.log(stream);
       throw new Error("Unexpected token " + stream.tokens[stream.index] + " at index " + stream.index + ".");
+    }
+    if (alphabet.toUpperCase().includes(stream.tokens[stream.index][0])) {
+      throw new Error("Unreserved name " + stream.tokens[stream.index] + " at index " + stream.index + ".");
     }
     let var_name = stream.tokens[stream.index];
     let binding = context[var_name];
@@ -595,7 +610,7 @@ function copy_subtree_recursive(node, parent, terms, new_terms) {
       }
     }
   } else {
-    console.log(new_node);
+    //console.log(new_node);
     throw new Error("Unrecognized node type: " + new_node.type);
   }
   return new_node;

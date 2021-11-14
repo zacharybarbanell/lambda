@@ -1,6 +1,7 @@
 SUCC := λn. λf. λx. f (n f x)
+PLUS := λn. λm. m SUCC n
 ZERO := λf. λx. x
-FIVE := SUCC (SUCC (SUCC (SUCC (SUCC ZER))))
+FIVE := SUCC (SUCC (SUCC (SUCC (SUCC ZERO))))
 TRUE := λt. λe. t
 FALSE := λt. λe. e
 AND := λt. λe. t e t
@@ -13,5 +14,5 @@ T := λp. PAIR (SND p) (SUCC (SND p))
 PRED := λn. FST (n T (PAIR ZERO ZERO))
 Y := λf. (λx. f (x x)) (λx. f (x x))
 FIBTMP := λf. λn. ISZERO (PRED n) n (PLUS (f (PRED n)) (f (PRED (PRED n))))
-FIBREC := Y GCDR
+FIBREC := Y FIBTMP
 FIBREC FIVE
