@@ -3,115 +3,116 @@
 let canvas = document.getElementById("myCanvas");
 let ctx = canvas.getContext("2d");
 
-let palette = {}
+let palette = {};
 
-palette.blue = {}
-palette.blue.light = "#6C6AC3"
-palette.blue.dark = "#704BC9"
-palette.yellow = {}
-palette.yellow.light = "#FFCF6B"
-palette.yellow.dark = "#FFB969"
-palette.green = {}
-palette.green.light = "#66A771"
-palette.green.dark = "#4F8D73"
-palette.purple = {}
-palette.purple.light = "#9E46B7"
-palette.purple.dark = "#8C34B8"
+palette.blue = {};
+palette.blue.light = "#6C6AC3";
+palette.blue.dark = "#704BC9";
+palette.yellow = {};
+palette.yellow.light = "#FFCF6B";
+palette.yellow.dark = "#FFB969";
+palette.green = {};
+palette.green.light = "#66A771";
+palette.green.dark = "#4F8D73";
+palette.purple = {};
+palette.purple.light = "#9E46B7";
+palette.purple.dark = "#8C34B8";
 
-let extra_node_properties = ["depth_memo","width_memo"]
+let extra_node_properties = ["depth_memo","width_memo"];
 
 function clean_ast(node) {
-  for(property of extra_node_properties) {
-    delete node["property"]
+  for (let property of extra_node_properties) {
+    delete node[property];
   }
-  for(child of get_children_names(node)) {
-    clean_ast(node[child])
+  for (let child of get_children_names(node)) {
+    clean_ast(node[child]);
   }
 }
 
 
 function sanity_check(node) {
   if (node.type === 'Variable' && node.bound) {
-    let looking_at = node.parent
+    let looking_at = node.parent;
     while (looking_at !== null) {
       if (looking_at === node.binding) {
         break;
       }
-      looking_at = looking_at.parent
+      looking_at = looking_at.parent;
     }
-    return looking_at !== null
-  }
-  else{
-    let return_val = true
-    for(let child of get_children_names(node)) {
-      return_val = return_val && sanity_check(node[child]) && node[child].parent === node
+    return looking_at !== null;
+  } else {
+    let return_val = true;
+    for (let child of get_children_names(node)) {
+      return_val = return_val && sanity_check(node[child]) && node[child].parent === node;
     }
-    return return_val
+    return return_val;
   }
 }
 
 
 
-let arc_param = 1.0 //range: 0-inf, higher number is flatter
-let vertical_clearance = 4
-let horizontal_clearance = vertical_clearance * arc_param //could be bigger
-let text_horizontal_clearance = 0 //could be bigger
-let apply_clearance = 20
-let stroke_width = 2
-let font_size = 24
+let arc_param = 1.0; //range: 0-inf, higher number is flatter
+let vertical_clearance = 4;
+let horizontal_clearance = vertical_clearance * arc_param; //could be bigger
+let text_horizontal_clearance = 0; //could be bigger
+let apply_clearance = 20;
+let stroke_width = 2;
+let font_size = 24;
 ctx.font = font_size + "px monospace";
-let metrics = ctx.measureText('.')
-let font_height_lower = metrics.fontBoundingBoxDescent
-let font_height_upper = metrics.fontBoundingBoxAscent
-let font_height = font_height_lower + font_height_upper
+let metrics = ctx.measureText('.');
+let font_height_lower = metrics.fontBoundingBoxDescent;
+let font_height_upper = metrics.fontBoundingBoxAscent;
+let font_height = font_height_lower + font_height_upper;
 
 function draw_thing(color_scheme,x,y,width,height) {
-  ctx.lineWidth = 2 * stroke_width
-  ctx.strokeStyle = color_scheme.dark
-  ctx.fillStyle = color_scheme.light
-  ctx.beginPath()
-  let angle = Math.atan2(1,arc_param)
-  let radius = Math.sqrt((height/2)**2+(height*arc_param/2)**2)
-  ctx.arc(x + width - height * arc_param/2,y + height * 0.5, radius, 0 - angle, angle)
-  ctx.arc(x + height * arc_param/2,y + height * 0.5, radius, Math.PI - angle, Math.PI + angle)
-  ctx.arc(x + width - height * arc_param/2,y + height * 0.5, radius, 0 - angle, angle)
-  ctx.stroke()
-  ctx.rect(x,y + ctx.lineWidth * 0.5,width,height  - ctx.lineWidth)
-  ctx.fill()
+  ctx.lineWidth = 2 * stroke_width;
+  ctx.strokeStyle = color_scheme.dark;
+  ctx.fillStyle = color_scheme.light;
+  ctx.beginPath();
+  let angle = Math.atan2(1,arc_param);
+  let radius = Math.sqrt((height/2)**2+(height*arc_param/2)**2);
+  ctx.arc(x + width - height * arc_param/2,y + height * 0.5, radius, 0 - angle, angle);
+  ctx.arc(x + height * arc_param/2,y + height * 0.5, radius, Math.PI - angle, Math.PI + angle);
+  ctx.arc(x + width - height * arc_param/2,y + height * 0.5, radius, 0 - angle, angle);
+  ctx.stroke();
+  ctx.rect(x,y + ctx.lineWidth * 0.5,width,height  - ctx.lineWidth);
+  ctx.fill();
 }
 
 function get_depth(node) { //this would be a cute oneliner in python but we can't have nice things I guess
   if (node.depth_memo !== undefined) {
     return node.depth_memo;
   }
-  let max_seen = 0
-  for(let child of get_children_names(node)) {
-    let new_val = 1 + get_depth(node[child])
+  let max_seen = 0;
+  for (let child of get_children_names(node)) {
+    let new_val = 1 + get_depth(node[child]);
     if (new_val > max_seen) {
       max_seen = new_val;
     }
   }
-  if (node.collapsed_name !== undefined){
-
+  if (node.collapsed_name !== undefined) {
+    max_seen = 0;
   }
-  node.depth_memo = max_seen
+  node.depth_memo = max_seen;
   return max_seen;
 }
 
 function calc_height(depth) {
-  return font_height + depth*vertical_clearance*2
+  return font_height + depth*vertical_clearance*2;
 }
 
 function calc_excess_width(height) {
-  return Math.sqrt((height/2)**2 + (arc_param*height/2)**2) - (arc_param*height/2)
+  return Math.sqrt((height/2)**2 + (arc_param*height/2)**2) - (arc_param*height/2);
 }
 
 function get_render_width(node) {
   if (node.width_memo !== undefined) {
-    return node.width_memo
+    return node.width_memo;
   }
   let return_val;
-  if (node.type === 'Lambda') {
+  if (node.collapsed_name !== undefined) {
+    return_val = ctx.measureText(node.collapsed_name).width;
+  } else if (node.type === 'Lambda') {
     return_val = ctx.measureText(LAMBDA + node.preferred_name + '.').width +
       text_horizontal_clearance +
       calc_excess_width(calc_height(get_depth(node.content))) +
@@ -135,35 +136,44 @@ function get_render_width(node) {
   } else {
     throw new Error("Unrecognized node type: " + node.type);
   }
-  node.width_memo = return_val
-  return return_val
+  node.width_memo = return_val;
+  return return_val;
 }
 
 function get_color(node) {
-  if (node.type === 'Lambda') {
-    return palette.yellow
+  if (node.collapsed_name !== undefined) {
+    return palette.purple;
+  } else if (node.type === 'Lambda') {
+    return palette.yellow;
   } else if (node.type === 'Application') {
-    return palette.blue
+    return palette.blue;
   } else if (node.type === 'Variable') {
-    return palette.green
+    return palette.green;
   } else {
     throw new Error("Unrecognized node type: " + node.type);
   }
 }
 
-function get_ast_boxes(node, left_x, mid_y){
-  let depth = get_depth(node)
-  let width = get_render_width(node)
-  let color = get_color(node)
-  let this_box = {}
-  this_box.thing = [color, left_x, mid_y - font_height_upper - vertical_clearance*depth, width, font_height + depth*vertical_clearance*2 ]
-  this_box.node_type = node.type
-  this_box.text_height = mid_y
-  if (node.type === 'Lambda') {
-    this_box.text = LAMBDA + node.preferred_name + '.'
+function get_ast_boxes(node, left_x, mid_y) {
+  let depth = get_depth(node);
+  let width = get_render_width(node);
+  let color = get_color(node);
+  let this_box = {};
+  let top = mid_y-font_height_upper-vertical_clearance*depth;
+  let height = font_height+depth*vertical_clearance*2;
+  this_box.thing = [color, left_x,top,width,height];
+  this_box.node_type = node.type;
+  this_box.text_height = mid_y;
+  this_box.node = node;
+  if (node.collapsed_name !== undefined) {
+    this_box.collapsed_name = node.collapsed_name;
+    this_box.children = [];
+  } else if (node.type === 'Lambda') {
+    this_box.text = LAMBDA + node.preferred_name + '.';
+
     this_box.children = [get_ast_boxes(node.content,left_x + ctx.measureText(LAMBDA + node.preferred_name + '.').width
                                                            + text_horizontal_clearance
-                                                           + calc_excess_width(calc_height(get_depth(node.content))), mid_y)]
+                                                           + calc_excess_width(calc_height(get_depth(node.content))), mid_y)];
   } else if (node.type === 'Application') {
     this_box.middle = left_x + horizontal_clearance
                              + get_render_width(node.left)
@@ -188,23 +198,59 @@ function get_ast_boxes(node, left_x, mid_y){
 
 function render_ast_boxes(box) {
   draw_thing(...box.thing);
-  if(box.node_type === 'Application') {
-    ctx.lineWidth = stroke_width
-    ctx.beginPath()
-    ctx.moveTo(box.middle, box.thing[2])
-    ctx.lineTo(box.middle, box.thing[2] + box.thing[4])
-    ctx.stroke()
-  }
-  else if (box.node_type === 'Lambda') {
+  if (box.collapsed_name !== undefined) {
+    ctx.fillStyle = "black";
+    ctx.fillText(box.collapsed_name, box.thing[1], box.text_height);
+  } else if (box.node_type === 'Application') {
+    ctx.lineWidth = stroke_width;
+    ctx.beginPath();
+    ctx.moveTo(box.middle, box.thing[2]);
+    ctx.lineTo(box.middle, box.thing[2] + box.thing[4]);
+    ctx.stroke();
+  } else if (box.node_type === 'Lambda') {
     ctx.fillStyle = "black";
     ctx.fillText(box.text, box.thing[1], box.text_height);
-  }
-  else if (box.node_type === 'Variable') {
+  } else if (box.node_type === 'Variable') {
     ctx.fillStyle = "black";
     ctx.fillText(box.text, box.thing[1], box.text_height);
   }
   for (let child of box.children) {
-    render_ast_boxes(child)
+    render_ast_boxes(child);
+  }
+}
+
+function find_containing_box(x,y,box) {
+  let x_left = box.thing[1];
+  let x_right = x_left + box.thing[3];
+  let y_top = box.thing[2];
+  let y_bottom = y_top + box.thing[4];
+  let in_box;
+  if (y < y_top || y > y_bottom) {
+    in_box = false;
+  } else if (x >= x_left && x <= x_right) {
+    in_box = true;
+  } else {
+    let center_y = (y_top + y_bottom) / 2;
+    let left_center_x = x_left + arc_param * (center_y - y_top);
+    let right_center_x = x_right - arc_param * (center_y - y_top);
+    if (x < x_left && Math.sqrt((x - left_center_x)**2 + (y - center_y)**2) < Math.sqrt((x_left - left_center_x)**2 + (y_top - center_y)**2)) {
+      in_box = true;
+    } else if ( x > x_right && Math.sqrt((x - right_center_x)**2 + (y - center_y)**2) < Math.sqrt((x_right - right_center_x)**2 + (y_top - center_y     )**2)) {
+      in_box = true;
+    } else {
+      in_box = false;
+    }
+  }
+  if (in_box) {
+    for (let child of box.children) {
+      let v = find_containing_box(x,y,child);
+      if (v !== null) {
+        return v;
+      }
+    }
+    return box.node;
+  } else {
+    return null;
   }
 }
 
@@ -216,6 +262,7 @@ window.addEventListener("load", _e => {
 
 let anim_counter = 0;
 let work_string = "";
+let work_tree = null;
 let LAMBDA = "λ";
 let single_char_tokens = [LAMBDA, '.', '(', ')'];
 
@@ -224,9 +271,9 @@ let single_char_tokens = [LAMBDA, '.', '(', ')'];
 function get_children_names(node) {
   let children;
   if (node.type === 'Lambda') {
-    children = ['content']
+    children = ['content'];
   } else if (node.type === 'Application') {
-    children = ['left', 'right']
+    children = ['left', 'right'];
   } else if (node.type === 'Variable') {
     children = [];
   } else {
@@ -241,23 +288,33 @@ function draw() {
   ctx.fillStyle = "white";
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.font = font_size + "px monospace"
+  ctx.font = font_size + "px monospace";
   ctx.fillStyle = "black";
-  let lines = work_string.split('\n')
-  for(let i = 0; i < lines.length; i++) {
+  let lines = work_string.split('\n');
+  for (let i = 0; i < lines.length; i++) {
       ctx.fillText(lines[i], 100, font_height_upper + 100 + (font_height + 10)*i);
   }
   if (anim_counter % 40 <= 19) {
-	   ctx.fillRect(100 + ctx.measureText(work_string).width,10,5,font_height)
+	   ctx.fillRect(100 + ctx.measureText(work_string).width,10,5,font_height);
   }
-
-  try {
-    render_ast_boxes(get_ast_boxes(parse_lc(work_string),100,500))
-  } catch (e) {
-    //console.log(e) //probably ought to do something with it but idk what
+  if (work_tree !== null) {
+    clean_ast(work_tree);
+    let boxes = get_ast_boxes(work_tree,100,700);
+    render_ast_boxes(boxes);
+    if (wasButtonPressed("left")) {
+      let clicked_node = find_containing_box(mouse.x, mouse.y, boxes);
+      if (clicked_node !== null) {
+        if (clicked_node.collapsed_name !== undefined) {
+          delete clicked_node.collapsed_name;
+        } else {
+          clicked_node.collapsed_name = '...';
+        }
+      }
+    }
   }
 
   anim_counter += 1;
+  mouse_prev = Object.assign({}, mouse);
 	window.requestAnimationFrame(draw);
 }
 
@@ -266,6 +323,12 @@ function key_pressed(e) {
 	if (code in type_codes) {
     if (code === "Backspace") {
       work_string = work_string.substring(0,work_string.length-1);
+    } else if (code === "Backquote") {
+      try {
+        work_tree = parse_lc(work_string);
+      } catch (e) {
+        console.log(e); //probably ought to do something with it but idk what
+      }
     } else {
       if (e.shiftKey) {
         work_string += type_codes[code][1];
@@ -276,20 +339,21 @@ function key_pressed(e) {
 	}
 }
 
-let type_codes = {}
-let alphabet = "abcdefghijklmnopqrstuvwxyz"
+let type_codes = {};
+let alphabet = "abcdefghijklmnopqrstuvwxyz";
 for (let i = 0; i < alphabet.length; i++) {
-	type_codes["Key" + alphabet[i].toUpperCase()] = [alphabet[i],alphabet[i].toUpperCase()]
+	type_codes["Key" + alphabet[i].toUpperCase()] = [alphabet[i],alphabet[i].toUpperCase()];
 }
-type_codes["Digit9"] = ["","("]
-type_codes["Digit0"] = ["",")"]
-type_codes["Backspace"] = [null,null]
-type_codes["Backslash"] = [LAMBDA,LAMBDA]
-type_codes["Space"] = [" "," "]
-type_codes["Period"] = [".",""]
-type_codes["Enter"] = ["\n","\n"]
-type_codes["Semicolon"] = ["",":"]
-type_codes["Equal"] = ["=",""]
+type_codes["Digit9"] = ["","("];
+type_codes["Digit0"] = ["",")"];
+type_codes["Backspace"] = [null,null];
+type_codes["Backquote"] = [null,null];
+type_codes["Backslash"] = [LAMBDA,LAMBDA];
+type_codes["Space"] = [" "," "];
+type_codes["Period"] = [".",""];
+type_codes["Enter"] = ["\n","\n"];
+type_codes["Semicolon"] = ["",":"];
+type_codes["Equal"] = ["=",""];
 
 document.onkeydown = key_pressed;
 
@@ -306,7 +370,8 @@ function drag_over_handler(e) {
   e.preventDefault();
 }
 
-
+// HELPER(parse_lc)
+// parse a single line of a .lc file
 function parse_lc_line(reserved_ast_list, str) {
   let line = str.split(':=');
   if (line.length === 2) {
@@ -327,6 +392,8 @@ function parse_lc_line(reserved_ast_list, str) {
   }
 }
 
+// FUNCTION
+// parse a .lc file using parse_lc_line
 function parse_lc(str) {
   let lines = str.split('\n');
   let reserved_ast_list = {};
@@ -412,6 +479,7 @@ function parse_atom(reserved_ast_list, stream, context, parent) {
   } else if (reserved_ast_list[stream.tokens[stream.index]] !== undefined) {
     let return_val = copy_subtree(reserved_ast_list[stream.tokens[stream.index]]);
     return_val.parent = parent;
+    return_val.collapsed_name = stream.tokens[stream.index];
     stream.index++;
     return return_val;
   } else {
@@ -496,8 +564,7 @@ function rec_alpha_equality(node_A, node_list_A, node_B, node_list_B) {
       } else {
         if (node_A.bound) {
           // variables are bound
-          let i = 0;
-          while (i < len(node_list_A)) {
+          for (let i = 0; i < len(node_list_A); i++) {
             if (node_A.binding === node_list_A[i]) {
               if (node_B.binding === node_list_B[i]) {
                 // variables have the same binding
@@ -507,7 +574,6 @@ function rec_alpha_equality(node_A, node_list_A, node_B, node_list_B) {
                 return false;
               }
             }
-            i++;
           }
           throw new Error("Bound variable not in ast scope: " + node_A.binding);
         } else {
@@ -527,7 +593,7 @@ function beta_reducable(node) {
 }
 
 function beta_reduce(node) {
-  if ( !beta_reducable(node) ) {
+  if (!beta_reducable(node)) {
     throw new Error("This node is not beta reducable.");
   }
   let argument = node.right;
@@ -641,4 +707,41 @@ function print_ast(node) {
   } else {
     throw new Error("Unrecognized node type: " + node.type);
   }
+}
+
+//stolen boilerplate
+
+window.addEventListener('mousemove', e => _mouseEvent(e));
+window.addEventListener('mousedown', e => _mouseEvent(e));
+window.addEventListener('mouseup', e => _mouseEvent(e));
+
+function _mouseEvent(e) {
+  let rect_thing = canvas.getBoundingClientRect()
+  mouse.x = e.clientX - rect_thing.x;
+  mouse.y = e.clientY - rect_thing.y;
+  mouse.buttons = e.buttons;
+  return false;
+}
+
+window.addEventListener('wheel', e => {
+  let d = e.deltaY > 0 ? 1 : -1;
+  return mouse.wheel = d;
+});
+
+let mouse = { x: 0, y: 0, buttons: 0, wheel: 0 };
+let mouse_prev = Object.assign({}, mouse);
+
+function isButtonDown(b) {
+  let i = b == "left" ? 0 : b == "right" ? 1 : 2;
+  return (mouse.buttons & (1 << i)) != 0;
+}
+
+function wasButtonPressed(b) {
+  let i = b == "left" ? 0 : b == "right" ? 1 : 2;
+  return ((mouse.buttons & (1 << i)) !== 0) && ((mouse_prev.buttons & (1 << i)) === 0);
+}
+
+function wasButtonReleased(b) {
+  let i = b == "left" ? 0 : b == "right" ? 1 : 2;
+  return ((mouse.buttons & (1 << i)) === 0) && ((mouse_prev.buttons & (1 << i)) !== 0);
 }
