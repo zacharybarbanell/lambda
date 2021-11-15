@@ -19,10 +19,10 @@ line will be parsed by the parser.
 
 ## Parsing
 
-To parse the code simply hit the tilde \'\`\' character on your keyboard (no
-shift) and the code will parse your Lambda Calculus for you. If no visual
-representation of the working string appears on your screen double check that
-the string can be parsed.
+To parse the code simply hit the tilde \'\`\' character on your keyboard and 
+the code will parse your Lambda Calculus for you. If no visual representation 
+of the working string appears on your screen double check that the string can 
+be parsed.
 
 ## Normalizing
 
