@@ -13,5 +13,5 @@ SND := λp. p FALSE
 T := λp. PAIR (SND p) (SUCC (SND p))
 PRED := λn. FST (n T (PAIR ZERO ZERO))
 MINUS := λm. λn. n PRED m
-LESS := λn. λm. ISZERO (MINUS n m) AND NOT ISZERO (MINUS m n)
+LESS := λn. λm. AND (ISZERO (MINUS n m)) (NOT (ISZERO (MINUS m n)))
 LESS TWO FOUR
