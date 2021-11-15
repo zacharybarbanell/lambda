@@ -329,6 +329,8 @@ function key_pressed(e) {
       } catch (e) {
         console.log(e); //probably ought to do something with it but idk what
       }
+    } else if (code === "Digit1") {
+      if (work_tree !== null) work_tree = normalized(work_tree);
     } else {
       if (e.shiftKey) {
         work_string += type_codes[code][1];
@@ -348,12 +350,14 @@ type_codes["Digit9"] = ["","("];
 type_codes["Digit0"] = ["",")"];
 type_codes["Backspace"] = [null,null];
 type_codes["Backquote"] = [null,null];
+type_codes["Digit1"] = [null,null];
 type_codes["Backslash"] = [LAMBDA,LAMBDA];
 type_codes["Space"] = [" "," "];
 type_codes["Period"] = [".",""];
 type_codes["Enter"] = ["\n","\n"];
 type_codes["Semicolon"] = ["",":"];
 type_codes["Equal"] = ["=",""];
+
 
 document.onkeydown = key_pressed;
 
