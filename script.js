@@ -295,7 +295,7 @@ function draw() {
       ctx.fillText(lines[i], 100, font_height_upper + 100 + (font_height + 10)*i);
   }
   if (anim_counter % 40 <= 19) {
-	   ctx.fillRect(100 + ctx.measureText(work_string).width,10,5,font_height);
+	   ctx.fillRect(100 + ctx.measureText(work_string).width,100,5,font_height);
   }
   if (work_tree !== null) {
     clean_ast(work_tree);
@@ -330,7 +330,7 @@ function key_pressed(e) {
         console.log(e); //probably ought to do something with it but idk what
       }
     } else if (code === "Digit1") {
-      if (work_tree !== null) work_tree = normalized(work_tree);
+      if (work_tree !== null) work_tree = with_renamed_variables(normalized(work_tree));
     } else {
       if (e.shiftKey) {
         work_string += type_codes[code][1];

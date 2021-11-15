@@ -4,6 +4,6 @@ ZERO  := λf. λx. x
 ONE   := SUCC ZERO
 TWO   := SUCC ONE
 THREE := SUCC TWO
-MULT  := λn. λm. n PLUS m ZERO
+MULT  := λn. λm. n (PLUS m) ZERO
 POWER := λn. λm. m (MULT n) ONE
 POWER THREE TWO

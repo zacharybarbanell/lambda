@@ -7,5 +7,5 @@ PAIR := λa. λb. λs. s a b
 FST := λp. p TRUE
 SND := λp. p FALSE
 T := λp. PAIR (SND p) (SUCC (FST p))
-DIV2 := λn. FST (n T (PAIR ZERO ZERO))
-PRED FOUR
+DIVTWO := λn. FST (n T (PAIR ZERO ZERO))
+DIVTWO FOUR
